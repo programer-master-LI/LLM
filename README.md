@@ -1,4 +1,4 @@
-# LLM
+# LLM大语言模型
 主流大预言模型GPT，kimi国产大模型，扣子coze大模型，豆包，codex
 AI 应用核心技术
 RAG：向量数据库（Chroma、FAISS、Milvus）、文档切片、Embedding、检索排序
