@@ -1,0 +1,1039 @@
+LangChain
+LangChain是用于开发智能体工程（Agent Engineering）的平台。
+1.1 架构体系
+LangChain并不仅仅是一个框架，而是一整个智能体开发平台，包含很多不同的组件。
+- LangChain：用于快速构建智能体，可兼容任何模型提供商。openai,千问
+- LangGraph：从底层一步步 控制智能体的构建，包括记忆（Memory）、人机协同（HITL）等
+- Deep Agents：用于构建复杂的、处理 多步骤的任务的智能体
+- LangSmith：用于测试、观察、评估、部署智能体
+LangChain还包含一套帮助人工智能团队利用 实时生产数据 进行持续测试和改进的平台，叫做LangSmith：
+
+LangChain平台的所有框架都是围绕着 构建智能体（Agent）这一目标的，
+
+1.2什么是智能体（Agent）
+Agent是一种使用大语言模型（LLM）来决定应用程序控制流的系统。
+在人工智能领域，Agent（智能体或代理）是指一种能够 感知环境、进行推理、自主决策 并采取行动 以实现特定目标的智能系统。
+特性      传统聊天机器人/LLM          AI Agent
+交互模式  被动响应，问一句答一句    主动规划，以目标为导向
+执行力    停留在文本生成层面       能操作软件、发送邮件、分析数据
+自主性    需要人类给出详细步骤     只需给定最终目标，自主寻找路径
+
+大模型（LLM）是“大脑”，那么 Agent 就是“拥有手脚和思维逻辑的独立个体”。
+它不再只是  被动地回答问题，而是  能主动拆解任务并  调用各种工具来完成工作。
+例如：要开发一个《AI旅游助手》的应用。
+如果是传统LLM应用，程序流程是这样的：
+1. 用户提出需求，例如：帮我计划一个5天的北京之旅，预算8000元，我喜欢历史。
+2. 调用LLM，分析用户需求，直接由LLM生成一个简单旅游计划
+这个计划基于它训练数据中的通用知识，可能没有考虑当前的天气、景点是否关闭、门票是否可预订等实时信息。
+如果是Agent应用，Agent可以自主规划程序流程：
+1. 用户提出需求，例如：帮我计划一个5天的北京之旅，预算8000元，我喜欢历史。
+2. Agent分析用户需求，分步执行：
+  1. 规划： 将大目标 分解为：查询机票酒店价格 -> 查询天气和景点信息 -> 设计每日行程 -> 计算总预算。
+  2. 调用工具：
+    - 调用机票/酒店API，查询用户指定日期范围内的价格和可选酒店。
+    - 调用天气预报API，查询未来5天北京的天气，建议携带的衣物。
+    - 调用搜索引擎/景点API，查询故宫、国博等热门景点的最新开放时间、预约政策和当前展览。
+  3. 感知与反馈： 综合感知所有查询到的实时信息，生成一个动态的、可执行的计划。
+例如：“根据预算和您对历史的兴趣，我推荐入住胡同里的XX酒店。第一天去故宫，但请注意下周一故宫闭馆，所以调整到第二天……总花费预计7500元，还在预算内。需要我现在帮您预订酒店和机票吗？”
+Agent通过 主动规划任务流程，主动使用工具，整合了实时信息，并进行了 动态调整，最终产出的是一个 真正可落地的方案。
+
+二、Langchain框架搭建
+首先，要使用LangChain必须先安装依赖，命令如下：
+# 集成 DeepSeek
+uv add langchain-deepseek
+# 集成 OpenAI
+uv add langchain-openai
+# 集成 Anthropic
+uv add langchain-anthropic
+
+接下来就可以开发Agent了，基本步骤如下：
+1. 加载环境变量from dotenv import load_dotenv
+2. 定义工具def
+3. 定义Agent
+4. 调用Agent
+Langchain提供了create_agent方法用来快速创建Agent，
+我们只需要提供好Agent所需的模型（Models）、工具（Tools）即可。
+# 1.加载环境变量
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# 2.定义工具，基础版，通过注释描述工具
+@tool
+def getWeather(location: str) -> str:
+    """
+    Get the weather in a given location.
+    Args:
+        location: city name or coordinates
+    """
+    return f"Current weather in {location} is sunny"
+    
+
+# 3.定义Agent
+agent = create_agent(
+    "deepseek-chat", # 模型名称（必须是LangChain支持的模型）
+    tools=[getWeather] # 工具集
+)
+
+# 4.调用模型
+print("🚀 正在调用大模型...")
+response = agent.invoke({
+    "messages": [
+        {"role": "user", "content": "杭州今天天气如何?"}
+    ]
+})
+
+# 5.打印结果
+print(response)
+运行结果如下：
+{'messages': [HumanMessage(content='杭州今天天气如何?',
+additional_kwargs={}, response_metadata={}, id='216c9cd1-8ebc-4365-a192-6b1a30ae788c'), 
+AIMessage(content='我来帮您查询杭州今天的天气情况。', additional_kwargs={'refusal': None}, 
+response_metadata={'token_usage': {'completion_tokens': 51, 'prompt_tokens': 313, 'total_tokens': 364,
+'completion_tokens_details': None, 'prompt_tokens_details': {'audio_tokens': None, 'cached_tokens': 256}, 
+'prompt_cache_hit_tokens': 256, 'prompt_cache_miss_tokens': 57}, 
+'model_provider': 'deepseek', 'model_name': 'deepseek-chat', 
+'system_fingerprint': 'fp_eaab8d114b_prod0820_fp8_kvcache', 
+'id': 'bbeda11e-7653-4c3d-9cc5-9a58491f63f0', 'finish_reason': 'tool_calls', 'logprobs': None}, 
+id='lc_run--019c92f4-8395-7852-8e36-d4645f86d443-0', tool_calls=[{'name': 'getWeather', 'args': {'location': '杭州'},
+'id': 'call_00_H7Yklbf4osnSeFOj3k4TP33N', 'type': 'tool_call'}], invalid_tool_calls=[], 
+usage_metadata={'input_tokens': 313, 'output_tokens': 51, 'total_tokens': 364, 'input_token_details': {'cache_read': 256}, 'output_token_details': {}}),
+ToolMessage(content='Current weather in 杭州 is sunny', name='getWeather', id='911eda0e-a5a8-4375-909d-b8707b3a08a9', 
+tool_call_id='call_00_H7Yklbf4osnSeFOj3k4TP33N'), AIMessage(content='根据查询结果，杭州今天的天气是**晴朗**的。', 
+additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 13, 'prompt_tokens': 388, 'total_tokens': 401, 'completion_tokens_details': None, 
+'prompt_tokens_details': {'audio_tokens': None, 'cached_tokens': 320}, 'prompt_cache_hit_tokens': 320, 'prompt_cache_miss_tokens': 68}, 
+'model_provider': 'deepseek', 'model_name': 'deepseek-chat', 'system_fingerprint': 'fp_eaab8d114b_prod0820_fp8_kvcache', 
+'id': '692c1420-4a06-4080-adf7-54250207e86a', 'finish_reason': 'stop', 'logprobs': None}, 
+id='lc_run--019c92f4-8d74-7770-89fd-da1e9d67efca-0', tool_calls=[], invalid_tool_calls=[], 
+usage_metadata={'input_tokens': 388, 'output_tokens': 13, 'total_tokens': 401, 'input_token_details': {'cache_read': 320}, 'output_token_details': {}})]}
+原本大模型不具备查询天气的能力，所以无法回答天气问题。但是，当我们提供了一个查询添加的Tool以后，它就能自动查询天气来回答问题，是不是很神奇。
+那么，Agent是如何做到的呢？
+传统的LLM应用都是一问一答的形式，模型只能根据自己的训练数据来回答，流程非常简单：
+用户-----提问--LLM生成结果给---用户
+而智能体通过自主分析之后是可以调用工具与外界交互，获取实时信息，工作流程则要复杂很多，是这样的：
+
+模型是如何知道工具的信息的呢？
+其实，在大模型提供的API接口中，有一个tools参数，描述了工具的详细信息：
+所以，LangChain会帮助我们把tool的信息封装为此tool参数，与message一起发送给大模型，
+大模型就了解tool的详细信息，根据用户需求判断是否需要调用tool，需要调用哪个tool.
+
+当大模型决定调用某个tool时，该如何调用呢？毕竟，tool是我们定义的，模型是没有调用能力的。
+模型确实 不能直接调用tool，只能返回字符串。但是它可以把要调用的tool信息、参数信息都以Json格式返回：tool_call
+这样一来，LangChain就会帮我们 解析响应结果中的Function信息，也就是tool信息，就知道了要调用哪个函数，以及参数是什么了。
+LangChain就会 执行该函数，再把 得到的结果再次发送给大模型。
+我们不难发现，Agent中最重要的两个部分，就是：
+- Model：负责推理分析、思考，相当于Agent的大脑
+- Tools：负责执行任务，相当于Agent与外界交互的手脚
+当然，Agent中肯定不止这两个部分，接下来，我们就逐一解析Agent创建的各个细节。
+
+2. 模型（Models）
+这里说的模型，完整叫法是大语言模型（LLM）。它能够理解人类语言，使用人类语言  生成内容、翻译、提取摘要、回答问题等。
+不仅如此，现在大多数的模型还有一些特别能力：
+-  Tool calling - 调用外部工具（例如查询数据库或调用 API），并在其回复中使用这些工具返回的结果。
+-  Structured output - 将模型的 响应结果约束为遵循已定义的格式，例如：json
+-  Multimodality - 可以处理和返回 文本以外的数据，如图像、音频和视频。
+-  Reasoning - 模型可以执行 多步推理来得出结论。
+可以说LLM就是Agent的大脑，是Agent的推理引擎。
+它驱动Agent做出每个决定：何时调用工具、调用哪个工具、如何解释结果，以及何时提供最终答案。
+LangChain支持现在市面上大部分的大语言模型（LLM），
+并且提供了 统一的模型调用接口。使您可以轻松访问许多不同的模型提供者，并且在模型之间进行试验和切换也变得很容易。
+2.1 初始化模型
+langchain提供了两种常见方法用来 初始化模型：
+- 使用init_chat_model函数，由langchain 自动创建模型对象
+- 使用不同模型对应的Model类， 手动创建模型对象
+2.1.1 init_chat_model
+在LangChain中开始使用 独立模型的最简单方法是 使用init_chat_model函数。
+调用init_chat_model函数时，你需要从langchain支持的模型提供者（Model Provider）中选择一个模型，而langchain会 自动初始化这个模型，非常方便。
+例如，我们要使用Deepseek这个模型。
+- 首先，我们需要安装模型依赖：
+uv add langchain-deepseek
+- 然后，我们要确保在项目的.env环境中配置好api_key:
+DEEPSEEK_API_KEY=sk-f362e1ea622c40878f11a9ca95f58847
+- 最后，就可以直接使用init_chat_model 初始化模型了：
+# 导入Langchain的初始化模型的函数
+from langchain.chat_models import init_chat_model
+# 加载环境变量
+from dotenv import load_dotenv
+load_dotenv()
+# 调用init_chat_model函数初始化模型，参数model用来指定模型名称，
+Langchain会根据模型名字自动设定base_url，并从环境变量中获取api_key
+model = init_chat_model(model="deepseek-chat")
+- 测试，我们可以通过打印model的类型，查看生成的结果：
+print(type(model)) # <class 'langchain_deepseek.chat_models.ChatDeepSeek'>
+可见，采用init_chat_model自动初始化模型时，模型的类型 由LangChain通过 模型名称自动推断。
+如果要切换其它模型，我们只需要安装其它模型依赖，然后配置API_KEY，改变模型名称即可，其它代码不用动。
+
+2.1.2 自定义模型及参数
+init_chat_model默认会根据模型名称自动确定模型的提供者、其base_url，并从env读取api_key，
+对于其它不支持的模型，我们必须自定义模型参数来访问。
+例如，我们要访问阿里云百炼的qwen-max，它就是不被langchain支持的模型，我们必须 自定义模型参数来访问。
+- 我们需要在环境变量中定义api_key和base_url
+- 然后在init_chat_model中指定model、model_provider、base_url和api_key
+- 首先，在.env文件中配置好api_key和base_url：
+DASHSCOPE_API_KEY=sk-915a82ea621f412ed9c8c8c7b22f8792
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+- 然后，手动读取环境变量中的api_key和base_url：
+# 非支持模型 无法自动加载环境遍历，我们需要 自己加载环境变量中的base_url和api_key
+import os
+base_url = os.getenv("DASHSCOPE_BASE_URL")
+api_key = os.getenv("DASHSCOPE_API_KEY")
+- 最后，调用init_chat_model，初始化模型：
+# 初始化模型
+model = init_chat_model(
+    model="qwen-max", # 模型名称，这里可以自定义，我们用的是阿里的qwen-max
+    model_provider="openai", # 如果是Langchain不支持的模型，需要指定模型提供者（虽然我们用的是阿里，但是阿里兼容openai，所以这里用openai，就是默认采用openai的API规范）
+    base_url=base_url,
+    api_key=api_key
+)
+- 测试，查看生成的模型类型：
+print(type(model)) # <class 'langchain_openai.chat_models.base.ChatOpenAI'>
+可见，通过参数 自定义模型时，模型的类型由model_provider参数类决定
+除了修改模型提供者以外，init_chat_model方法允许我们调整模型参数，例如：
+- temperature: 控制生成文本的随机性，值越小越确定，值越大越随机
+- max_tokens: 控制生成文本的最大长度
+- top_p: 控制生成文本的多样性，值越小越多样，值越大越确定
+- timeout: 控制生成文本的超时时间
+- max_retries: 控制生成文本的最大重试次数
+# 调用init_chat_model函数初始化模型，并设定模型参数
+model = init_chat_model(
+    model="qwen-max", 
+    model_provider="openai",
+    base_url=base_url,
+    api_key=api_key,
+    temperature=1.5,
+)
+
+2.1.3 使用Model类
+其实init_chat_model方法 底层就是帮我们利用Model类 创建对象。但只支持有限的模型。
+而在langchain的社区，除了langchain官方提供的Model，还 有些类是社区提供，更丰富多样。
+例如，我们使用社区版本的Model类来访问阿里云百炼的通义千问模型：
+1. 首先，我们需要安装依赖
+  1. LangChain社区依赖：
+ uv add langchain-community
+  2. 阿里云百炼依赖：     （以上两个依赖都安）
+ uv add dashscope
+2. 然后，我们就可以 使用Model类 初始化模型了
+from langchain_community.chat_models.tongyi import ChatTongyi
+# 使用Model类初始化模型
+model = ChatTongyi(
+    model="qwen-plus"
+    # 其它模型参数...
+)
+3. 测试，查看生成的模型类型：
+print(type(model)) # <class 'langchain_community.chat_models.tongyi.ChatTongyi'>
+
+2.2 访问模型                 （访问是访问，调用是调用，都是两种阻塞和流式）
+LangChain提供了两个不同的方法来访问模型：
+- invoke：阻塞式访问
+- stream：流式访问
+2.2.1 invoke
+invoke方法是 阻塞式调用，需要 等待模型生成全部结果 才会返回，等待时间较长。
+# 调用invoke方法
+response = model.invoke("月亮的首都是哪里？")
+# 查看响应结果
+print(response)
+2.2.2 stream
+阻塞式调用需要 等待较长时间才能看到AI返回的结果，而流式调用则可以  实时看到AI返回的一个个词。
+# 通过.stream方法实现 流式访问
+stream = model.stream("月亮的首都是哪里？")
+# stream调用返回的结果是一个generator，方便我们循环获取结果
+print(type(stream))
+# 遍历stream结果，实时打印AI的回复
+for chunk in stream:
+    print(chunk.content, end="", flush=True)
+2.3 在Agent中使用模型
+Langchain提供了一个create_agent方法用来 快速创建智能体。
+当我们创建Agent的时候，可以 直接使用创建好的Model，也可以指定模型名，让Langchain自动初始化模型。
+2.3.1 创建智能体 （两种方法）
+1. 创建智能体，指定模型名，由Langchain初始化模型
+from langchain.agents import create_agent
+# 1.指定Model名称，由LangChain自动初始化模型
+agent = create_agent(model="deepseek-chat")
+2. 创建智能体，并使用 创建好的model
+from langchain.agents import create_agent
+from langchain_community.chat_models.tongyi import ChatTongyi
+# 1.使用Model类初始化模型
+model = ChatTongyi(      #通义
+    model="qwen-plus"
+    # 其它模型参数...
+)
+# 2.使用  初始化好的model创建智能体
+agent = create_agent(model=model)
+
+2.3.2 调用智能体                 （访问是访问，调用是调用，都是两种阻塞和流式）
+智能体也分为阻塞调用和流式调用两种。       
+1. 阻塞式调用，使用invoke方法：
+# 2.调用模型，需要传入一个消息列表
+response = agent.invoke({
+    "messages": [{"role": "user", "content": "月亮的首都是哪里？"}]
+})
+print(response)
+2. 流式调用，只需要把调用方式改为stream：
+for token, metadata in agent.stream(
+    {"messages": [{"role": "user", "content": "月亮的首都是哪里？"}]},
+    stream_mode="messages"
+):
+    if token.content:  # Check if there's actual content
+        print(token.content, end="", flush=True)  # Print token
+要注意，Agent的stream模式同样返回一个generator，但是其结构由stream_mode参数决定：
+- messages: 返回LLM生成的每一个片段，是一个包含token和metadata的元组（Tuple）
+- updates: 返回Agent运行过程中的每一次事件，例如与LLM的对话、工具的调用等
+- custom: 返回通过stream writer记录的每一次自定义的输出
+如果是为了 流式输出 AI返回的结果，使用messages模式即可。
+
+2.4 总结
+- 如何使用init_chat_model初始化模型
+- 如何使用Model类初始化模型
+- 如何调用模型
+- 如何创建Agent，并在Agent中使用模型
+- 如何调用Agent
+
+3. 消息（Messages）
+在调用模型时，发送给LLM的消息、LLM返回的消息都包含以下几部分内容：
+- role：消息所属角色，可以是system、user、assistant
+- content：消息的内容
+- metadata（可选）：消息的元数据，例如：消息的ID、消耗的token等
+之前我们都是自己用dict模拟消息：
+response = agent.invoke({
+    "messages": [{"role": "user", "content": "月亮的首都是哪里？"}]
+})
+这太麻烦了。在LangChain中发送给LLM的消息、
+LLM返回的消息都统一被封装为BaseMessage，它是中基本的上下文单元。
+3.1 消息类型
+在LangChain中，我们并不需要自己创建BaseMessage对象，
+LangChain已经把 常见消息根据角色（Role）创建了对应的BaseMessage的子类：
+- SystemMessage：role是system，代表系统消息，用于设定模型角色和交互背景
+- HumanMessage：role是user，代表用户输入的消息
+- AIMessage：role是assistant，代表LLM生成的响应，包含：文本、工具调用、元数据
+- ToolMessage：role是tool，代表工具调用时产生的结果
+所以，我们可以这样传递消息列表：
+from langchain.messages import HumanMessage, AIMessage
+from langchain.agents import create_agent
+# 创建Agent
+agent = create_agent(model="deepseek-chat")
+# 调用Agent，发送消息
+response = agent.invoke({
+    "messages": [
+        HumanMessage(content="你好，我是虎哥"),
+        AIMessage(content="你好，虎哥，很高兴认识你。"),
+        HumanMessage(content="我的名字是什么？")
+    ]
+})
+print(response)
+注意看，Agent的返回结果中包含完整的消息列表（Messages）：
+{'messages': [HumanMessage(content='你好，我是虎哥', additional_kwargs={}, response_metadata={}, id='f5703ee9-f567-48d6-8e07-e6ddaf24547e'), AIMessage(content='你好，虎哥，很高兴认识你。', additional_kwargs={}, response_metadata={}, id='5c654447-828c-43b7-9505-a341e0d21b8a', tool_calls=[], invalid_tool_calls=[]), HumanMessage(content='我的名字是什么？', 
+additional_kwargs={}, response_metadata={}, id='a3390334-85b8-4f5f-8528-782a18671ac9'),
+AIMessage(content='你刚才提到你的名字是“虎哥”。如果这是你希望我称呼你的方式，我会记住的。如果有其他偏好，随时告诉我哦！ 😊', 
+additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 33, 'prompt_tokens': 26, 'total_tokens': 59, 'completion_tokens_details': None, 'prompt_tokens_details': {'audio_tokens': None, 'cached_tokens': 0}, 'prompt_cache_hit_tokens': 0, 'prompt_cache_miss_tokens': 26}, 'model_provider': 'deepseek', 'model_name': 'deepseek-chat', 'system_fingerprint': 'fp_eaab8d114b_prod0820_fp8_kvcache', 'id': '9ea39267-c54a-4523-82e0-1377435ffde4', 'finish_reason': 'stop', 'logprobs': None}, id='lc_run--019cad79-8b7a-7861-855b-5a87ba11d38c-0', tool_calls=[], invalid_tool_calls=[],
+usage_metadata={'input_tokens': 26, 'output_tokens': 33, 'total_tokens': 59, 'input_token_details': {'cache_read': 0},'output_token_details': {}})]}
+我们可以通过遍历Messages数组，更友好的打印结果：
+for message in response['messages']:
+    message.pretty_print()
+结果：
+================================ Human Message =================================
+
+你好，我是虎哥
+================================== Ai Message ==================================
+
+你好，虎哥，很高兴认识你。
+================================ Human Message =================================
+
+我的名字是什么？
+================================== Ai Message ==================================
+
+你刚才提到你的名字是“虎哥”。如果这是你希望我称呼你的方式，我会记住的。如果有其他偏好，随时告诉我哦！ 😊
+通过刚才的实现可以发现，拼接message列表可以让AI记住会话历史，产生记忆。
+不过手动拼接Message太麻烦了，后面我们学习如何实现  自动的会话记忆功能。
+3.2 多模态消息
+之前我们都是向模型发送文本消息，但是 LangChain 也支持向模型发送多模态消息，
+比如图片、音频、视频、文本等。但前提是必须是多模态模型才支持。
+一些支持多模态的模型有：
+- qwen3.5-plus
+- gpt-5-nano
+- ...
+我们以qwen3.5-plus为例，演示向模型发送图片消息
+3.2.1 在线图片
+首先，我们演示如何发送一个在线图片给模型，也就是指定模型的url地址。
+图片如下：一狗一人
+消息格式如下：
+{
+    "role": "user",
+    "content": [
+        {"type": "image", "url": "https://xxx.com/a.jpeg"},
+        {"type": "text", "text": "这些图描绘了什么内容？"}
+    ]
+}
+示例代码：
+from langchain.chat_models import init_chat_model
+import os
+
+# 1.初始化模型
+model = init_chat_model(
+    model="qwen3.5-plus",  # 这里选择qwen3.5-plus，这是一个多模态模型，支持图片、文本、音频、视频
+    model_provider="openai",
+    base_url=os.getenv("DASHSCOPE_BASE_URL"),
+    api_key=os.getenv("DASHSCOPE_API_KEY")
+)
+
+# 2.创建智能体
+agent = create_agent(model=model)
+
+# 3.组织多模态消息
+multimodal_message = HumanMessage(
+    content=[
+        {"type": "image",
+         "url": "https://help-static-aliyun-doc.aliyuncs.com/file-manage-files/zh-CN/20241022/emyrja/dog_and_girl.jpeg"},
+        {"type": "text", "text": "这些图描绘了什么内容？"}
+    ])
+
+# 4.调用Agent，发送多模态消息
+for token, metadata in agent.stream({
+    "messages": [multimodal_message]     #发送多模态消息
+}, stream_mode="messages"):
+    if token.content:
+        print(token.content, end="", flush=True)
+结果：
+这张图片描绘了一个非常温馨、和谐的场景，主要包含以下内容：
+1.  **人物与动物**：
+    *   一位年轻女性坐在沙滩上，她留着长发，身穿黑白格纹衬衫和深色长裤（裤脚卷起），看起来非常休闲。
+    *   在她对面坐着一只体型较大的浅色犬（看起来像金毛寻回犬或拉布拉多），狗狗身上戴着带有彩色花纹的胸背带。
+2.  **互动动作**：
+    *   这是画面的核心：狗狗乖巧地抬起一只前爪，放在女子的手掌中，就像是在玩“握手”的游戏。
+    *   女子面带灿烂的笑容，温柔地注视着狗狗，一只手握着狗爪，另一只手似乎拿着小零食或者正准备抚摸它。这展现了人与宠物之间亲密无间的信任与爱。
+3.  **环境与背景**：
+    *   场景设定在海滩上，地面是细腻的沙子，上面布满了脚印和纹理。
+    *   背景是大海，可以看到海浪正在向岸边涌来。
+4.  **光影与氛围**：
+    *   光线非常温暖柔和，从画面右侧照射过来（看起来像是日落时分的“黄金时刻”），给女子的头发和沙滩镀上了一层金色的光晕。
+    *   整体氛围宁静、美好且充满幸福感。
+
+此外，还可以看到一条红色的牵引绳散落在狗狗身后的沙地上，说明它们正在享受一段放松的散步时光。
+
+3.2.2 本地图片
+所谓本地图片，就是用户上传的图片数据或者本地存在的图片，而不是图片的url地址。
+我们需要将图片数据转换成base64字符串，然后发送给模型。
+本地图片的消息格式：
+{
+    "role": "user",
+    "content": [
+        {"type": "text", "text": "Describe the content of this image."},
+        {
+            "type": "image",
+            "base64": "AAAAIGZ0eXBtcDQyAAAAAGlzb21tcDQyAAACAGlzb2...",
+            "mime_type": "image/jpeg",
+        },
+    ]
+}
+示例：
+import base64
+
+# 例如，有一个用户上传的文件，是字节格式img_bytes，我们先将其进行base64编码
+img_b64 = base64.b64encode(img_bytes).decode("utf-8")
+
+# 组织多模态消息
+multimodal_question = HumanMessage(content=[
+    {
+        "type": "image",
+        "base64": img_b64,
+        "mime_type": "image/jpeg",
+    },
+    {"type": "text", "text": "给我讲讲图片中的城市"}
+])
+
+# 调用Agent，发送消息
+response = agent.invoke(
+    {"messages": [multimodal_question]}
+)
+
+print(response['messages'][-1].content)
+4. 提示词（Prompts）
+发送给大模型的所有消息 都可以称为 提示词（Prompt），它 直接影响模型的输出结果。
+其中，SystemMessage尤为重要，我们把SystemMessage称为 系统提示词（System Prompt），
+它可以 给模型设定角色和本次聊天的背景，对 模型生成的内容有很大的影响。
+4.1 系统提示词的设定         （非常重要）
+在 创建智能体时，我们可以 直接设定system prompt，不必在每次发送消息时指定。
+from langchain.agents import create_agent
+from langchain.messages import HumanMessage
+# 创建智能体
+agent = create_agent(
+    model = "deepseek-chat",
+    system_prompt="像海盗一样说话."
+)
+
+for token, metadata in agent.stream(
+    {"messages": [HumanMessage(content="你是谁？")]},
+    stream_mode="messages"
+):
+    print(token.content, end="", flush=True)
+如果没有设定系统提示词，模型会按照  训练中的自我认知来回答：
+你好！我是DeepSeek，由深度求索公司创造的AI助手！😊
+我是一个纯文本模型，虽然不支持多模态识别功能，但我有文件上传功能，可以帮你处理图像、txt、pdf、ppt、word、excel等各种文件，从中读取文字信息进行分析处理。
+我的一些特点：
+- 完全免费使用，没有收费计划
+- 上下文长度达128K，可以处理很长的对话
+- 支持联网搜索（需要你手动点开联网搜索按键）
+- 可以通过官方应用商店下载App使用
+而在 创建智能体时直接设定system prompt， 设定了海盗这个角色后，它的回答就非常有趣了：
+啊哈！我是你船上的鹦鹉，一个在数字海洋里翱翔的AI助手！
+想聊聊宝藏、航海，还是七大洋的奇闻？尽管放马过来，伙计！🗺️⚓
+4.2 提示词工程
+通过 优化System Prompt从而 让模型输出更理想的结果的这一过程，我们称为提示词工程（Prompt Engineering）。
+也就是说，提示词优化不是一锤子买卖，而是一个不断优化、测试、再优化的过程。
+那么，提示词到底该怎么写呢？
+从内容来说，提示词通常包含以下   几个部分，通常按此顺序排列：
+- 身份（Identity）：描述AI的职责、沟通风格和总体目标。
+- 说明（Instructions）：请指导模型如何生成所需的响应。它应该遵循哪些规则？模型应该做什么，以及模型绝对不能做什么？
+- 示例（Examples）：提供可能的输入示例，以及模型期望的输出。
+- 背景信息（Context）：向模型提供生成响应所需的任何额外信息，例如RAG的额外知识库数据，或您认为特别相关的任何其他数据。
+从格式来说，在编写System Prompt时，您可以使用Markdown格式和XML 标签的组合 来帮助模型理解提示和上下文数据的逻辑边界。
+- Markdown 的标题和列表有助于标记提示的不同部分，并向模型传达层级结构。它们还可以提高开发过程中提示的可读性。
+- XML 标签可以帮助明确区分一段内容（例如用作参考的辅助文档、对话示例等）的起始和结束位置。
+# Identity
+You are a helpful assistant that labels short product reviews as
+Positive, Negative, or Neutral.
+# Instructions
+* Only output a single word in your response with no additional formatting
+  or commentary.
+* Your response should only be one of the words "Positive", "Negative", or
+  "Neutral" depending on the sentiment of the product review you are given.
+# Examples
+<product_review id="example-1">
+I absolutely love this headphones — sound quality is amazing!
+</product_review>
+
+<assistant_response id="example-1">
+Positive
+</assistant_response>
+
+<product_review id="example-2">
+Battery life is okay, but the ear pads feel cheap.
+</product_review>
+
+<assistant_response id="example-2">
+Neutral
+</assistant_response>
+
+<product_review id="example-3">
+Terrible customer service, I'll never buy from them again.
+</product_review>
+
+<assistant_response id="example-3">
+Negative
+</assistant_response>
+
+接下来，我们就学习下不同的提示词对模型结果的影响。
+4.2.1 设定角色和详细指令
+角色可以帮助模型认清自己的身份，以对应的身份来回答问题。
+指令则告诉模型需要遵循哪些规则，应该做什么，不应该做什么
+例如：
+system_prompt = """
+# 身份
+- 你是一个编程助手，你帮助用户编写Python代码。
+# 指令
+- 定义变量时，使用snake case命名法，而不是camel case命名法。
+- 不要返回markdown格式说明，仅仅返回代码即可。
+"""
+# 创建智能体
+agent = create_agent(
+    model = "deepseek-chat",
+    system_prompt=system_prompt
+)
+
+for token, metadata in agent.stream(
+    {"messages": [HumanMessage(content="怎样定义string变量记录学校名字，例如`黑马程序员`")]},
+    stream_mode="messages"
+):
+    print(token.content, end="", flush=True)
+输出结果：
+school_name = "黑马程序员"
+4.2.2 Few-Shot examples
+有的时候我们希望模型按照固定的风格来回答问题，而这种风格又不太好描述，那我们就可以通过举例的方式让模型学习例子来回答。
+用户只需在输入提示（Prompt）中提供几个输入-输出示例，模型就能理解任务模式并生成符合预期的输出：
+
+system_prompt = """
+# 身份
+- 你是一个科幻作家，根据用户的要求创建一个太空之都。
+
+# 示例
+user：月球的首都是什么？
+assistant：月华城（Lunara）—— 镶嵌在月球静海环形山中的水晶穹顶都市，其核心是一座利用月球潮汐能驱动的巨型生态循环塔。
+
+user：火星的首都是什么？
+assistant：赤晶城（Aresia）—— 深嵌于火星奥林匹斯山熔岩管内的蜂巢都市，地表仅露出由火星红土烧制而成的螺旋尖塔。
+"""
+
+# 创建智能体
+agent = create_agent(
+    model = "deepseek-chat",
+    system_prompt=system_prompt
+)
+
+for token, metadata in agent.stream(
+    {"messages": [HumanMessage(content="金星的首都是什么?")]},
+    stream_mode="messages"
+):
+    print(token.content, end="", flush=True)
+结果：
+熔金城（Aurum）——悬浮于硫酸云层之上的宏伟浮空都市，以反光性合金铸造，永恒折射着昏黄的日光。
+4.2.3 结构化输出
+由于传统程序识别结构化的数据会更加方便，所以有时候我们希望LLM也能输出固定结构的内容，方便我们解析。这同样可以通过系统提示词来实现。
+
+system_prompt = """
+# 身份
+- 你是一个科幻作家，根据用户的要求创建一个太空之都。
+
+# 指令
+- 请务必以JSON格式输出，不要加任何markdown样式。
+
+# 示例：
+user: 月球的首都是什么？
+assistant:
+{
+    "name": "月华市（Lunaria）",
+    "location": "位于月球正面赤道附近的静海基地遗址之上，依托巨大的穹顶与地下网络建成",
+    "vibe": "冷冽、高效、革新",
+    "economy": "氦-3能源开采、量子通信枢纽、尖端生物圈农业"
+}
+"""
+
+agent = create_agent(
+    model="deepseek-chat",
+    system_prompt=system_prompt
+)
+
+response = agent.invoke(
+    {"messages": [HumanMessage(content="金星的首都是什么?")]},
+)
+
+print(response['messages'][-1].content)
+输出结果：       （josn格式信息）
+{
+    "name": "硫磺城（Sulfura）",
+    "location": "悬浮于金星浓厚大气层中距地表约50公里的高空，由巨大的反重力浮空平台群构成",
+    "vibe": "高压、炽热、坚韧",
+    "economy": "大气资源提炼（二氧化碳、硫酸）、极端环境材料制造、太阳能巨型阵列"
+}
+在LangChain中，实现结构化输出会更加简单。我们无需自己在提示词中添加描述实现结构化输出，而仅仅是设定好一个数据类型即可。
+首先，我们定义一个类，用来封装模型要输出的数据：
+from pydantic import BaseModel
+class CapitalInfo(BaseModel):
+    name: str
+    location: str
+    vibe: str
+    economy: str
+然后，我们就可以在创建Agent时设定好输出格式：
+# 然后，我们就可以创建智能体并设置结构化输出的格式了。
+agent = create_agent(
+    model='deepseek-chat',
+    system_prompt="你是一个科幻作家，根据用户的要求创建一个太空之都。",
+    response_format=CapitalInfo # 设置结构化输出的格式
+)
+
+response = agent.invoke(
+    {"messages": [HumanMessage(content="月球的首都是什么?")]}
+)
+注意，在输出的结果中，有一个'structured_response'的字段，就是结构化输出的对象：
+{'messages': [HumanMessage(content='月球的首都是什么?', additional_kwargs={}, response_metadata={}, id='42747579-7994-4fe9-93bf-970216fb65b4'), AIMessage(content='', additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 130, 'prompt_tokens': 355, 'total_tokens': 485, 'completion_tokens_details': None, 'prompt_tokens_details': {'audio_tokens': None, 'cached_tokens': 0}, 'prompt_cache_hit_tokens': 0, 'prompt_cache_miss_tokens': 355}, 'model_provider': 'deepseek', 'model_name': 'deepseek-chat', 'system_fingerprint': 'fp_eaab8d114b_prod0820_fp8_kvcache', 'id': '3dcb8346-67b2-4cf1-b61d-cf9cf8e2dde9', 'finish_reason': 'tool_calls', 'logprobs': None}, id='lc_run--019ca25b-a0e2-77a0-af64-9b1d2c9247f0-0', tool_calls=[{'name': 'CapitalInfo', 'args': {'name': '月宫', 'location': '月球南极-艾特肯盆地边缘', 'vibe': '高科技与东方古典美学融合的宁静都市，拥有透明穹顶下的传统园林和悬浮建筑', 'economy': '氦-3开采、量子计算中心、太空旅游枢纽、月球农业和科学研究'}, 'id': 'call_00_NBnEIMUhLTXZdXRJLZVYCnan', 'type': 'tool_call'}], invalid_tool_calls=[], usage_metadata={'input_tokens': 355, 'output_tokens': 130, 'total_tokens': 485, 'input_token_details': {'cache_read': 0}, 'output_token_details': {}}), ToolMessage(content="Returning structured response: name='月宫' location='月球南极-艾特肯盆地边缘' vibe='高科技与东方古典美学融合的宁静都市，拥有透明穹顶下的传统园林和悬浮建筑' economy='氦-3开采、量子计算中心、太空旅游枢纽、月球农业和科学研究'", name='CapitalInfo', id='1735ea63-403a-468a-a5ea-cc01deeab0b2', tool_call_id='call_00_NBnEIMUhLTXZdXRJLZVYCnan')], 'structured_response': CapitalInfo(name='月宫', location='月球南极-艾特肯盆地边缘', vibe='高科技与东方古典美学融合的宁静都市，拥有透明穹顶下的传统园林和悬浮建筑', economy='氦-3开采、量子计算中心、太空旅游枢纽、月球农业和科学研究')}
+所以，我们这样获取结构化的输出：
+city = response['structured_response']
+完整代码：
+from pydantic import BaseModel
+from langchain.agents import create_agent
+from langchain.messages import HumanMessage
+
+# 首先，我们定义一个类，用来封装模型要输出的数据：
+class CapitalInfo(BaseModel):
+    name: str
+    location: str
+    vibe: str
+    economy: str
+
+# 然后，我们就可以创建智能体并设置结构化输出的格式了。
+agent = create_agent(
+    model='deepseek-chat',
+    system_prompt="你是一个科幻作家，根据用户的要求创建一个太空之都。",
+    response_format=CapitalInfo # 设置结构化输出的格式
+)
+
+response = agent.invoke(
+    {"messages": [HumanMessage(content="月球的首都是什么?")]}
+)
+
+city = response['structured_response']
+
+print(f"{city.name}位于{city.location}，是一座{city.vibe}的城市，其主要产业包括{city.economy}。")
+
+4.3 总结
+本节学习了：
+- 什么是提示词
+- 如何优化系统提示词，控制模型输出
+  - 设定角色和详细指令
+  - 通过few-shot样例，让模型参考
+  - 通过结构化输出控制输出格式
+  - 通过markdown、xml语法编写提示词，加强模型理解能力
+
+到目前为止，我们的Agent与普通的聊天机器人没什么差别，只能实现简单的问答。
+这是因为，它还缺少一个非常重要的东西:Tools
+下一节正式学习Tool
+5. 工具（Tools）
+一个完整的Agent至少要包含两个关键的部分：
+- 模型：是Agent的大脑，负责推理、分析，规划任务步骤
+- 工具：是Agent的手脚，负责执行任务，与外界交互
+5.1 基本用法
+我们先通过一个案例快速回顾Agent定义的步骤，以及Agent的工作原理。
+定义一个带有工具的Agent分为两步：
+- 定义工具
+- 定义Agent，绑定工具
+首先，使用tool装饰器定义工具：
+# 1.使用tool装饰器定义工具        
+from langchain.tools import tool
+@tool
+def get_weather(location: str) -> str:
+    """
+    Get the weather in a given location.
+    Args:
+        location: city name or coordinates
+    """
+    return f"Current weather in {location} is sunny"
+接着，定义Agent，绑定工具：
+from langchain.agents import create_agent
+from langchain_core.messages import HumanMessage
+
+# 2.创建智能体，并绑定工具
+agent = create_agent(
+    model="deepseek-chat",
+    tools=[get_weather]
+)
+
+# 3.调用Agent
+response = agent.invoke(
+    {"messages": [HumanMessage(content="杭州今天天气如何?")]},
+)
+
+for message in response['messages']:
+    message.pretty_print()
+执行结果如下：
+================================ Human Message =================================
+
+杭州今天天气如何?
+================================== Ai Message ==================================
+
+我来帮您查询杭州今天的天气情况。
+Tool Calls:
+  get_weather (call_00_FETE4MIR9p1Gr6uszgjcko6m)
+ Call ID: call_00_FETE4MIR9p1Gr6uszgjcko6m
+  Args:
+    location: 杭州
+================================= Tool Message =================================
+Name: get_weather
+
+Current weather in 杭州 is sunny
+================================== Ai Message ==================================
+
+根据查询结果，杭州今天的天气是晴朗的。天气很好，适合外出活动！
+流程图：
+由此可见，所谓的工具，本质就是一个 可调用的函数，要想让Agent知道有哪些工具可调用，该如何调用这些工具，就必须把这个函数的详细信息发送给模型。包括：
+- 函数名
+- 函数的作用
+- 函数的参数和返回值信息
+所以，定义工具的时候，关键就是把这些信息描述清楚即可。
+5.2 自定义工具
+在LangChain中，定义工具的过程被大大简化，与定义普通函数几乎没什么差别，只是在一些细节上需要注意。
+首先，定义工具需要在函数上添加@tool装饰器。
+例如，我们定义一个计算平方根的数学工具：
+# 定义工具
+from langchain.tools import tool
+@tool
+def square_root(x: float) -> float:
+    """计算指定数字的平方根"""
+    return x ** 0.5
+智能体在工作时，需要将函数的名称、输入、作用传递给大模型，默认情况下这些信息的来源是：
+- 工具名称：函数名
+- 工具输入：函数入参
+- 工具作用：函数的注释
+当然，我们可以通过tool装饰器来覆盖上述信息：
+- 通过装饰器定义工具名称
+@tool("square_root")
+def tool1(x: float) -> float:
+    """Calculate the square root of a number"""
+    return x ** 0.5
+- 通过  装饰器定义工具作用描述
+@tool("square_root", description="Calculate the square root of a number")
+def tool1(x: float) -> float:
+    return x ** 0.5
+- 通过装饰器定义工具入参约束
+如果要覆盖工具的入参信息则会复杂很多，我们要借助于Pydantic或JSON约束。
+例如，我们需要定义个查询天气的tool，借助于Pydantic来约束入参。
+我们定义一个入参的模型，在模型中添加入参描述信息：
+# 例如一个查询天气的tool
+class WeatherInput(BaseModel):
+    """查询天气的输入参数."""
+    location: str = Field(description="City name or coordinates")
+    units: Literal["celsius", "fahrenheit"] = Field(
+        default="celsius",
+        description="Temperature unit preference"
+    )
+    include_forecast: bool = Field(
+        default=False,
+        description="Include 5-day forecast"
+    )
+定义工具，使用定义的模型来约束入参：
+# 定义一个查询天气的tool
+@tool(args_schema=WeatherInput)
+def get_weather(location: str, units: str = "celsius", include_forecast: bool = False) -> str:
+    """Get current weather and optional forecast."""
+    temp = 22 if units == "celsius" else 72
+    result = f"Current weather in {location}: {temp} degrees {units[0].upper()}"
+    if include_forecast:
+        result += "\nNext 5 days: Sunny"
+    return result
+工具定义好之后，调用方式与普通函数类似：
+# 调用数学工具
+tool1.invoke({"x": 467})
+# 调用查询天气工具
+get_weather.invoke({"location": "杭州", "include_forecast": True})
+注意：
+在LangChain中，作为工具的函数有两个保留的参数名，你的自定义参数不能与之重复！他们是：
+- config：用来传递运行时配置
+- runtime：用来传递运行时上下文
+当我们创建智能体时，可以把定义好的工具传递给智能体，将来模型就能得到工具信息，并根据情况判断是否需要调用工具，需要调用哪个工具了。
+from langchain.agents import create_agent
+# 创建智能体，并添加工具
+agent = create_agent(
+    model="deepseek-chat",
+    tools=[tool1, get_weather],
+    system_prompt="你是一个智能助手，你使用工具来解决用户问题。"
+)
+接下来，调用智能体，向其提问，模型会自动根据用户问题判断：
+- 是否需要调用工具？
+- 该调用哪个工具？
+- 该传递那些参数？
+并且在调用工具之后，根据工具执行结果给用户生成响应。
+# 调用智能体
+for token, metadata in agent.stream(
+    {"messages": [HumanMessage(content="467的平方根是多少?")]},
+    stream_mode="messages"
+):
+    print(token.content, end="", flush=True)
+for token, metadata in agent.stream(
+    {"messages": [HumanMessage(content="北京和杭州接下来几天天气如何?")]},
+    stream_mode="messages"
+):
+    print(token.content, end="", flush=True)
+如果采用stream模式的updates模式，可以看到工具调用的具体步骤：
+for chunk in agent.stream(
+    {"messages": [HumanMessage(content="467、529的平方根是多少?")]},
+    stream_mode="updates"
+):
+    for step, data in chunk.items():
+        print(f"step: {step}")
+        print(f"content: {data['messages'][-1].content_blocks}")
+        print()
+输出如下：
+step: model
+content: [{'type': 'text', 'text': '我来帮你计算这两个数的平方根。'}, {'type': 'tool_call', 'id': 'call_00_oWChR8Xgo21mmWKW0SP9uOS9', 'name': 'square_root', 'args': {'x': 467}}, {'type': 'tool_call', 'id': 'call_01_UqzhGeRNcoSoidItA0gScaoY', 'name': 'square_root', 'args': {'x': 529}}]
+
+step: tools
+content: [{'type': 'text', 'text': '21.61018278497431'}]
+
+step: tools
+content: [{'type': 'text', 'text': '23.0'}]
+
+step: model
+content: [{'type': 'text', 'text': '计算结果如下：\n\n- **467的平方根** ≈ 21.6102\n- **529的平方根** = 23.0（因为23 × 23 = 529，所以529是完全平方数）\n\n所以：\n- √467 ≈ 21.6102\n- √529 = 23'}]
+5.3 预定义工具
+LangChain中提供了很多  预定义好的工具，方便我们使用，可使用的预定义工具列表可参考官网：
+https://docs.langchain.com/oss/python/integrations/tools
+例如，模型本身只能根据本身的训练数据回答问题，无法获取实时信息。
+但如果我们给它提供了 web搜索的工具，那么你的Agent就如同具备了 实时web搜索的能力，回答会更加准确。
+有一个专门用于给Agent提供Web搜索的工具，叫做Tavily，可访问其官网，要使用这个工具看5.3.1
+在LangChain中也提供了对Tavily的支持：
+https://docs.langchain.com/oss/python/integrations/tools/tavily_search
+
+6. 记忆（memory）
+模型本身是 没有记忆的，它记不住 历史的会话内容，参考之前的章节介绍：第1节. AI通识与基础
+我们需要通过技术手段，帮助模型记住会话历史，产生记忆。
+对于Agent而言，记忆至关重要，因为它能 让代理记住之前的交互情况，从反馈中学习，并适应用户的偏好。
+随着代理 处理的任务愈发复杂，涉及的用户 交互也越来越多，这种能力对于提高效率和用户满意度而言变得不可或缺。
+6.1 记忆的分类
+对于智能体而言，记忆分为了两类：
+- 短期记忆（short-term memory）
+- 长期记忆（long-term memory)
+大家不要被误导了，很多人看到名字就误以为：短期记忆就是临时记忆，断电就没了；长期记忆就是永久记忆，持久保存。
+对于智能体而言，这是完全错误的理解！！！
+简单用一句话概括的话：
+- 短期记忆：当前任务或会话的上下文（Working Memory 或 Session Memory）
+- 长期记忆：跨任务或会话的经验与知识（Persistent Memory）
+比如，一个公司数据分析的Agent。
+用户提出需求：
+“帮我写Q1的销售分析报告”
+Agent：
+---
+短期记忆：
+- 对话历史
+- 查询到Q1的销售数据
+- 任务目标及执行状态
+---
+长期记忆：
+- 公司的KPI算法
+- 用户偏好的报告形式
+6.2 短期记忆管理
+由于短期记忆通常生命周期是当前会话，所以我们也可以称为会话记忆。Agent的会话记忆通常包含三部分：
+- 对话历史
+- 查询结果
+- 任务状态
+对于简单的Agent来说，任务没有做拆分，也就不需要记录任务状态，只用考虑会话历史和查询结果就可以了。后续我们会学习如何  自定义更复杂的Agent会话记忆。
+LangChain提供了  自动化的记忆管理方案：
+- 首先，LangChain把会话记忆（也就是Messages列表）记录为AgentState的一部分
+- AgentState通过Checkpointer对象来保存，每一次与AI的交互都会生成一个快照，记录为一个checkpoint，把同一会话的所有checkpoint组合在一起，就是完整的会话历史了。
+- 为了区分不同的会话记忆，不同会话需要设定各自的thread_id，相同会话则使用相同thread_id
+- 向Agent发起会话时必须指定自己的thread_id以唤起对应的会话记忆
+以LangChain提供的  基于内存的Checkpointer为例来演示会话记忆。
+6.2.1 InMemorySaver
+具体步骤是这样的：
+1. 导入CheckPointer的内存版实现：
+# langchain提供的checkpointer的默认实现，基于内存存储
+from langgraph.checkpoint.memory import InMemorySaver
+2. 创建智能体，设置checkpointer：
+from langchain.agents import create_agent
+# 创建智能体时指定checkpointer，LangChain会自动帮我们管理历史会话记忆
+agent = create_agent(
+    "deepseek-chat",
+    checkpointer=InMemorySaver()
+)
+3. 发起调用时，指定thread_id
+  1. 第一次调用，告知AI一些信息
+from langchain.messages import HumanMessage
+# 设定thread_id，作为会话标识
+config = {"configurable": {"thread_id": "thread_1"}}
+# 第一次调用，告知AI我的信息
+response = agent.invoke(
+    {"messages": [HumanMessage(content="你好，我叫虎哥，我最喜欢猫猫。")]},
+    config # 调用时添加thread_id，区分不同会话
+)
+print(response)
+  2. 第二次调用，询问AI
+# 第二次调用，询问我的信息，这次带上thread_id，唤起记忆
+response = agent.invoke(
+    {"messages": [HumanMessage(content="我最喜欢的动物是什么？")]},
+    config # 调用时添加thread_id
+)
+
+print(response)
+由于两次调用使用了相同的thread_id，被认定为是同一次对话，           （记忆的关键）
+所以LangChain会在请求模型时携带历史对话的Messages，模型就能根据历史消息来正确回答了：
+{'messages': [HumanMessage(content='你好，我叫虎哥，我最喜欢猫猫。', additional_kwargs={}, response_metadata={}, id='986d4740-b0dd-4888-ae6a-3eb32454c272'), AIMessage(content='虎哥你好！很高兴认识你！🐯✨  \n喜欢猫猫的人一定都有颗温柔的心呢～你家里有养猫吗？还是喜欢云吸猫？如果聊起猫咪的话题，我可以陪你聊很久哦！😸', additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 50, 'prompt_tokens': 15, 'total_tokens': 65, 'completion_tokens_details': None, 'prompt_tokens_details': {'audio_tokens': None, 'cached_tokens': 0}, 'prompt_cache_hit_tokens': 0, 'prompt_cache_miss_tokens': 15}, 'model_provider': 'deepseek', 'model_name': 'deepseek-chat', 'system_fingerprint': 'fp_eaab8d114b_prod0820_fp8_kvcache', 'id': '55e64e65-82dc-4698-9a58-76bad566e953', 'finish_reason': 'stop', 'logprobs': None}, id='lc_run--019ca8cf-ee63-7c81-b5d0-69fdc73b1ae3-0', tool_calls=[], invalid_tool_calls=[], usage_metadata={'input_tokens': 15, 'output_tokens': 50, 'total_tokens': 65, 'input_token_details': {'cache_read': 0}, 'output_token_details': {}}), HumanMessage(content='我最喜欢的动物是什么？', additional_kwargs={}, response_metadata={}, id='c8e7382d-3fa3-44b8-afc6-0ed965ad2abb'), AIMessage(content='根据我们之前的对话，你提到自己“最喜欢猫猫”，所以毫无疑问——你最喜欢的动物是**猫猫**！🐱❤️  \n\n需要聊聊猫咪的品种、趣事，或者分享猫片吗？我随时待命～（笑）', additional_kwargs={'refusal': None}, response_metadata={'token_usage': {'completion_tokens': 53, 'prompt_tokens': 74, 'total_tokens': 127, 'completion_tokens_details': None, 'prompt_tokens_details': {'audio_tokens': None, 'cached_tokens': 64}, 'prompt_cache_hit_tokens': 64, 'prompt_cache_miss_tokens': 10}, 'model_provider': 'deepseek', 'model_name': 'deepseek-chat', 'system_fingerprint': 'fp_eaab8d114b_prod0820_fp8_kvcache', 'id': '10f6fec4-764c-49a7-bb9d-2fa45c08fbfb', 'finish_reason': 'stop', 'logprobs': None}, id='lc_run--019ca8d0-dfe3-7e43-8be2-bcf669aa95e1-0', tool_calls=[], invalid_tool_calls=[], usage_metadata={'input_tokens': 74, 'output_tokens': 53, 'total_tokens': 127, 'input_token_details': {'cache_read': 64}, 'output_token_details': {}})]}
+注意：
+目前我们使用的checkpointer是基于内存的InMemorySaver，LangChain也提供了很多持久化存储的checkpointer，例如：
+- SqlLiteSaver ：基于sqlite存储
+- PostgresSaver ：基于Postgres存储
+- CosmosDBSaver ：使用Azure Cosmos DB的实现
+
+6.2.2 持久化Memory（选学）
+LangChain也提供了很多持久化存储的checkpointer，例如：
+- SqlLiteSaver ：基于sqlite存储
+- PostgresSaver ：基于Postgres存储
+- CosmosDBSaver ：使用Azure Cosmos DB的实现
+
+我们以SqlLiteSaver 为例来讲解如何自定义Memory存储方案。
+首先，安装对应以来：
+# pip安装
+# pip install langgraph-checkpoint-sqlite
+# uv安装
+uv add langgraph-checkpoint-sqlite
+然后，导入以来，并初始化sqlite-checkpointer
+import sqlite3
+from langgraph.checkpoint.sqlite import SqliteSaver
+# 初始化checkpointer
+checkpointer = SqliteSaver(sqlite3.connect("checkpoint.db", check_same_thread=False))
+# 自动建表
+checkpointer.setup()
+最后，创建Agent，并设置checkpointer：
+# 创建agent
+agent = create_agent(
+    "deepseek-chat",
+    checkpointer=checkpointer,
+)
+6.3 记忆管理策略
+由于会话记忆要保存会话的历史，并且在调用LLM时携带历史消息列表。而当会话越来越长时，历史消息就可能超过LLM的上下文限制。
+例如，DeepSeek的上下文不能超过128K.
+一旦会话历史 超过上下文窗口，就会出现 上下文丢失的情况，从而导致丢失记忆。而且即便不丢失，太长的上下文容易让模型出现“注意力分散”问题，模型的响应速度、回答质量会大大降低。
+未来解决这一问题，通常有以下几种手段：
+6.3.1 修剪消息           （详细看6.3）
+修剪消息并不是真正的删除消息，在AgentState中的消息列表依然是完整的，只不过发送给LLM之前会进行修剪，只保留一部分消息。
+6.3.2 删除消息
+删除消息与修剪不同：
+- 修剪消息：只是从State中选取一部分消息发送给模型
+- 删除消息：直接删除State中保存的消息，也就是说消息历史中不再存在！
+所以一定要谨慎使用。
+6.3.3 总结消息
+不管是修剪还是删除，都会导致一部分消息丢失，从而丢失记忆。所以就有了第三种策略：总结消息（Summarize Messages）
+它的思路很简单，就是把历史的消息利用大模型总结出摘要，然后把最新的消息拼接在一起作为新的消息列表发送给大模型，这样既不会超出模型的上下文窗口限制，还能尽量保留所有的记忆。
+LangChain提供了总结消息的默认实现：SummarizationMiddleware
+用法很简单：
+1. 初始化SummarizationMiddleware和checkpointer
+rom langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware
+from langgraph.checkpoint.memory import InMemorySaver
+from langchain_core.runnables import RunnableConfig
+
+# 初始化checkpointer
+checkpointer = InMemorySaver()
+# 初始化中间件
+middleware = SummarizationMiddleware(
+    model="deepseek-chat",
+    trigger=("messages", 3), #  触发时机，当消息数超过3时，进行总结
+    keep=("messages", 1) #  保留的会话数，超过2条
+)
+  注意这里SummarizationMiddleware的参数（详细内容参考官网链接：summarization）：
+  - model：会话摘要时要使用的模型
+  - trigger：会话摘要的触发时机，有三种设置：
+    - fraction (float): 模型上下文大小的比例（0-1）
+    - tokens (int): 令牌数量
+    - messages (int): 消息数量
+  - keep：是指触发摘要后要保留的消息
+    - fraction (float): 要保留的消息占模型上下文大小的比例（0-1）
+    - tokens (int): 要保留的消息的令牌数量
+    - messages (int): 要保留的消息数量
+2. 创建Agent，设置middleware和checkpointer
+# 创建agent
+agent = create_agent(
+    model="deepseek-chat",
+    middleware=[middleware],
+    checkpointer=checkpointer,
+)
+3. 调用Agent即可
+config: RunnableConfig = {"configurable": {"thread_id": "1"}}
+# 制造长会话历史
+agent.invoke({"messages": "你好，我是虎哥."}, config)
+agent.invoke({"messages": "我最喜欢的运动是乒乓"}, config)
+agent.invoke({"messages": "我最喜欢的动物是猫猫"}, config)
+# 测试效果
+final_response = agent.invoke({"messages": "你还记得我吗？"}, config)
+for message in final_response["messages"]:
+    message.pretty_print()
+测试结果：
+================================ Human Message =================================
+
+Here is a summary of the conversation to date:
+
+用户名为“虎哥”。最喜欢的运动是乒乓球。最喜欢的动物是猫。AI已询问用户打乒乓球的时长、偏好（单打/双打）以及是否有喜欢的运动员。AI也已询问用户是否养猫或“云吸猫”。用户尚未回答关于乒乓球的后续问题。
+================================ Human Message =================================
+
+你还记得我吗？
+================================== Ai Message ==================================
+
+当然记得，虎哥！你最喜欢的运动是乒乓球，最喜欢的动物是猫。之前我们聊到一半，还在等你分享打乒乓球的细节呢——比如打了多久、喜欢单打还是双打，有没有崇拜的运动员？另外也很好奇你是有自己的猫，还是喜欢“云吸猫”？
+
+今天想继续聊乒乓球，还是想聊聊猫？或者有其他新话题？ 😄
+
+
+
+
+
+
+
+
+
+
+
