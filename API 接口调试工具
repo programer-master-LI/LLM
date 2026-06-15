@@ -1,0 +1,14 @@
+一、API 接口调试工具Hoppscotch（原 Postwoman）
+是一款开源、免费、轻量跨平台 API 接口调试工具，对标商业工具 Postman，
+原生是网页应用，打开浏览器访问 hoppscotch.io 就能直接使用，无需下载安装客户端；同时支持 Windows/Mac/Linux 桌面客户端、离线 PWA、本地私有化部署。
+多协议全功能支持，支持 REST/HTTP、GraphQL、WebSocket、MQTT、SSE 等十余种接口协议；具备请求集合、环境变量、鉴权、预请求脚本、响应测试、接口 Mock 全套功能。
+左侧面板：编写 POST 请求、JSON 请求体（填入模型名称、system 人设、用户提问）
+中间标签：参数、请求头、授权、预请求脚本等配置项
+右侧面板：发送后展示模型返回的 JSON 响应、Token 用量、接口状态码
+
+
+
+
+
+
+
