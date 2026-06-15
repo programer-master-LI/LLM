@@ -1,15 +1,17 @@
 # LLM大语言模型
-主流大预言模型GPT，kimi国产大模型，扣子coze大模型，豆包，codex
+公共大模型：主流大预言模型GPT，kimi国产大模型，扣子coze大模型，豆包，codex
+私有大模型：定制化模型，数据安全性高，ollama本地部署
 AI 应用核心技术
 RAG：向量数据库（Chroma、FAISS、Milvus）、文档切片、Embedding、检索排序
 Agent：工具调用、任务规划、多轮记忆、智能流程编排
-向量数据库、FastAPI/Flask 接口开发、前后端简单联调、Linux 运维、SQL / 向量检索、POC 演示文档撰写
+向量数据库、FastAPI/Flask 接口开发、前后端简单联调、向量检索、POC 演示文档撰写
+Linux 运维、SQL / 
 
 大模型框架：LangChain、LlamaIndex，掌握RAG检索增强、Agent工作流开发；
-适配该国企AI岗：LangChain+LlamaIndex、RAG与Agent 项目/简历标准描述
+适配AI解决方案：LangChain+LlamaIndex、RAG与Agent 项目/标准描述
  
 一、通用落地向，适配自然资源行业
-基于Python使用LangChain、LlamaIndex搭建垂直行业知识库系统，
+基于Python使用LangChain、LlamaIndex搭建垂直 行业知识库系统，
 
 设计完整RAG检索增强链路：完成地质档案、林业规范文档的文本分块、向量嵌入、向量库存储与多路检索召回；
 自主开发多工具Agent智能工作流，封装文档解析、数据查询、报表生成工具，实现行业报告自动撰写、业务问题智能研判；
@@ -54,7 +56,7 @@ Agent：工具调用、任务规划、多轮记忆、智能流程编排
  
 3. LangChain vs LlamaIndex 分工（必知）
  
-- LlamaIndex：强项是文档索引、知识库、RAG检索链路，擅长海量专业文档的存储与检索，适合搭建企业私有知识库；
+- LlamaIndex：强项是文档索引、知识库、RAG检索链路，擅长海量专业文档的存储与检索，适合搭建 企业私有知识库；
 ​
 - LangChain：强项是流程编排、Agent工具链、LLM对话链路、多组件串联，适合复杂业务流程、多工具智能体开发；
 ​
