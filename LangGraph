@@ -1,0 +1,64 @@
+LangChain已经能帮助我们 开发智能体、RAG系统了，
+为什么还要学习LangGraph呢？我们需要先弄清楚LangGraph到底能做什么。
+1.1 简单LLM应用
+在早期，AI应用就是简单的调用LLM：
+start---LLM---end这时候的AI应用能力有限：
+- 无法调用工具
+- 无法访问外部数据
+- 无法实现复杂多步骤任务
+1.2 链式LLM应用（Chain）
+为了增强LLM应用的能力，人们开始自定义程序执行流程，添加额外的步骤：
+
+Start---  Step 1  ---- LLM ----Step 3 ----Step N ----End
+         知识检索              工具调用    
+                      Chain
+例如，在调用LLM前加入知识检索（retrieval），在模型调用之后加入工具调用（tool calls），此时整个由程序控制的工作流就形成了一个链条（Chain）。
+早期的LangChain也就是基于这种理念设计，这也是LangChain名字的由来。
+这种人工定制的工作流特点是稳定可靠（Reliable），你不管执行多少次，流程一定是这样，不会出现意外情况。
+但是它缺乏 自主智能（Agentic），距离真正的智能体相差甚远。
+1.3 智能体（Agent）
+所谓的智能体，就是指 应用的执行工作流应该由LLM来决定，也就是让  AI来自主规划工作流。
+例如，由LLM来决定接下来应该执行Step 2 还是 Step 3：（路由式Agent）
+                                  Step 2 -----  End
+Start---- Step 1  ----- LLM                
+                       大脑       Step 3 -----  End
+甚至，完全由LLM自主决定所有的执行流程：           （完全由LLM自主决定）
+Start ---------- LLM--------- End
+                大脑
+                Step 1
+                Step 2
+                Step N
+1.4 稳定度与自主控制力
+虽然都是Agent，但上面的两个例子恰好是Agent的两个极端，或者说是LLM对应用控制能力的两个极端：
+但是，Agent的自主控制能力与稳定程度之间是对立的两端，通常来说，LLM自主控制的越多，应用的稳定程度就会越小：
+https://my.feishu.cn/docx/JAandVTAIoPwwvxzOrkcX3sPnKd?openbrd=1&doc_app_id=501&blockId=H2ygds9RUouY7bxB2HtcXGtWnKf&blockType=whiteboard&blockToken=OvPLwZj8ghclqhbgtx2cTtScnEa#H2ygds9RUouY7bxB2HtcXGtWnKf
+所以，通常来说，我们只能在  可靠度和自主控制程度  之间选择一个平衡点。
+2. LangGraph的作用
+LangGraph的作用就是在保持Agent的自主控制程度不变 的同时，提高Agent的稳定程度：
+那么，LangGraph是如何做到的呢
+2.1 认识LangGraph
+简单来说，LangGraph允许你自己定义Agent的工作流（WorkFlow）中的每一个节点（Node）：
+- 需要稳定性的节点，就用传统编程控制
+- 需要LLM自主控制的，就交给LLM
+并且，整个工作流不再是一条直线运行的链（Chain），而是一个像真正工作流那样有分支、有循环的图（Graph）。
+在LangGraph中，工作流由3个基本的要素组成：
+- 节点（Node）：即工作流中的关键工作代码，可以是工具调用、知识检索、LLM调用
+- 边（Edge）：也可以理解为线，就是把各个节点连接起来的路径，是控制工作流走向的关键
+- 状态（State）：整个工作流中流转的数据
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
