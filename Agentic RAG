@@ -74,31 +74,115 @@ RAG，Retrieval-Augmented Generation，就是检索增强生成的意思。
 - 存储向量数据（知识片段）
 - 基于相似度 检索向量数据（知识片段）
 LangChain中支持市面上常见的各种向量数据库，具体可查看官方文档：https://docs.langchain.com/oss/python/integrations/vectorstores
-企业常用向量数据库可以分为三类：
+企业常用向量数据库可以分为三类：       （公共的向量数据库，里边已经做了大量的文本转成语义数字，所以只需要我们接入数据库使用就行）
 - 专用的向量数据库：这些产品从底层专为 向量检索设计，在高并发、低延迟、海量数据场景下表现最佳。
-- 传统数据库集成向量功能：通过 插件或新增模块支持向量检索，优点是 复用现有运维能力和生态
+- 传统数据库 集成向量功能：通过 插件或新增模块支持 向量检索，优点是 复用现有运维能力和生态
 - 云原生向量数据库：运维成本较低
+新兴专用向量数据库：Chroma轻量级、嵌入式使用（类似SQLite），与LangChain集成最紧密。适合原型验证、AI应用快速开发、个人/小团队项目。
+Milvus最流行的开源向量数据库，功能全面（支持多种索引、混合查询）。适合有数据安全要求、需要自建或私有化部署的中大型企业。
+传统数据库新增向量功能：
+Pgvector (PostgreSQL扩展)最流行的关系型数据库向量扩展，简单稳定，支持精确/近似搜索。技术栈以PostgreSQL为主、不想引入新组件的企业。
+Redis通过 RediSearch 模块提供向量相似度搜索。需要超低延迟（缓存级）、实时推荐场景。
+企业开发，首推Milvus数据库，性能最好，而且开源免费
+个人测试，用Milvus lite或Chroma都可以，都支持本地嵌入（类似Sqlite）
+有了向量数据库，我们就  无需自己检索向量了，全部  交给向量数据库即可。
+1.5 知识先入库部分完成
+到这里为止，RAG所需要的核心技术和原理就清楚了，这个时候你也能理解RAG名字的由来了。
+RAG，Retrieval-Augmented Generation，关键词：
+- 检索：就是利用 向量相似度 检索知识片段
+- 增强：用检索到的知识片段  增强模型，减少幻觉
+- 生成：模型  基于知识片段生成答案
+1.5.1 RAG核心流程
+综上所述，RAG分为  两大阶段：
+- 离线阶段：负责  构建知识库        （大模型开发阶段人员干的事）
+  1. 知识加载：读取 各种来源的知识库数据，解析、清洗数据，形成文档（Documents）。
+  2. 知识切分：把清洗后的知识文档切分成一个个的知识片段（Chunks）
+  3. 向量化：利用 向量模型将知识片段转为向量，使得语义相近的文本在该向量空间中彼此邻近
+  4. 存储向量：像处理好的向量及对应的知识片段存入向量数据库
+- 在线阶段：负责  检索知识，生成回答   （大模型在先回答用户问题阶段）
+  1. 问题向量化：利用向量模型（必须与离线阶段同一个模型）将用户问题转为向量
+  2. 知识召回：在向量数据库中 检索与问题向量最相似的文档的TopN retrieval（先命中最像的前N段资料）
+  3. 拼接上下文
+  4. 生成回答：把检索到的知识片段与  用户提问组织为新提示词，发给大模型，生成回答
+1.5.2 LangChain的RAG组件
+LangChain为了  简化RAG的开发，为我们提供了大量组件，满足RAG每一个流程的实现。
+主要的组件包括：
+- 离线阶段
+  1. 知识加载：LangChain提供了Document Loader组件
+  2. 知识切分：LangChain提供了Text Splitter组件
+  3. 向量化：LangChain提供了Embeddings接口，兼容 各类向量模型
+  4. 存储向量：LangChain提供了VectorStore接口，兼容 各类向量数据库
+- 在线阶段：负责检索知识，生成回答
+  1. 问题向量化：同样 基于Embeddings模型接口
+  2. 知识召回：LangChain提供了 Retrievers组件，简化知识片段的检索操作
+  3. 生成回答：直接调用模型即可
+1.5.3 RAG代码预览
+最后，我们一起先看看LangChain实现RAG的代码流程，有一个整体的认知。
+完整代码如下：
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import CharacterTextSplitter
+from langchain_community.embeddings import DashScopeEmbeddings
+from langchain_core.vectorstores import InMemoryVectorStore
+from langchain.tools import tool
+from langchain.chat_models import init_chat_model
+from langchain.agents import create_agent
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+# ===============一、构建知识库阶段====================
+# =============1.加载文档===============
+loader = PyPDFLoader(
+    "resources/贵州茅台研报.pdf",
+    mode="single", # single \ page
+)
+docs = loader.load()
+print(f"文档数量:{len(docs)}")
+# =============2.切分文档===============
+# 创建递归切分器
+splitter = CharacterTextSplitter(separator="\n", chunk_size=1000, chunk_overlap=150)
+# 切分文档
+chunks = splitter.split_documents(docs)
+print(f"分块数量：{len(chunks)}")
+# =============3.向量化===============
+# 向量模型，这里用阿里云的向量模型
+embeddings = DashScopeEmbeddings(
+    model="text-embedding-v3",
+    dashscope_api_key=os.getenv("DASHSCOPE_API_KEY")
+)
+# 创建向量库，需要指定向量模型，存储文档时会自动调用向量模型完成向量化
+vectorstore = InMemoryVectorStore(embedding=embeddings)
+# 添加文档
+vectorstore.add_documents(chunks)
+# ==============二、在线问答阶段================
+llm = init_chat_model("deepseek-chat")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def try_rag(query: str):
+    # 1.检索文档（VectorStore会自动把问题向量化，召回相关知识片段）
+    retrieved_docs = vectorstore.similarity_search(query, k=2)
+    # 2.拼接上下文提示词
+    content = "\n\n".join(doc.page_content for doc in retrieved_docs)
+    prompt = f"""你基于我提供的报告回答用户问题，报告中没提及的就说不知道，不要自己编造答案.
+    report: ```{content}```
+    query: {query}"""
+    # 3.调用模型，生成答案
+    response = llm.invoke(prompt)
+    return response.content
+测试：
+print(try_rag("茅台收盘价多少"))
+回答：
+根据您提供的报告，贵州茅台的收盘价为1458.49元。
+可以发现，一些简单问题RAG Agent可以正常回答。但如果问题复杂一些，就会出问题：
+print(try_rag("茅台2025年的市盈率和市净率是多少"))
+回答：
+根据您提供的报告，其中提及了贵州茅台2025年的市盈率（PE）为22.2倍（见表格2“2025A/E”列），
+但报告中未提及2025年的市净率（PB）数据。因此，无法回答市净率的问题。
+文档中明明有相关信息，但是回答却没有，这就是说现在这个RAG系统在知识检索上存在问题。
+可见，LangChain尽管提供了组件能帮助我们 快速搭建RAG系统，但要想开发出一个稳定、可靠的RAG系统，还有很多需要优化的地方。
+接下来我们就分为两个阶段逐一学习这些RAG组件的用法，以及其中的优化细节：
+- 第1节. 构建知识库：核心关注离线阶段的每个组件用法及企业优化方案
+- 第2节. RAG Agent: 核心关注如何利用LangChain构建RAG Agent，实现在线阶段的知识检索和问答，并通过优化手段提高回答的准确度
+- 第3节. RAG评估: 核心是RAG系统的健康指标，如何利用工具去评估RAG系统的能力
 
 
 
