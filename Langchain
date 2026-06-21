@@ -221,8 +221,8 @@ model = ChatTongyi(
 )
 3. 测试，查看生成的模型类型：
 print(type(model)) # <class 'langchain_community.chat_models.tongyi.ChatTongyi'>
-
-2.2 访问模型                 （访问是访问，调用是调用，都是两种阻塞和流式）
+                                                                                                   （其实咱们做的是平台）                     
+2.2 访问模型                 （访问是访问，调用是调用，都是两种阻塞和流式）访问是用户问题任务进到大模型了，调用是大模型接收到问题要调用模型回答问题）
 LangChain提供了两个不同的方法来访问模型：
 - invoke：阻塞式访问
 - stream：流式访问
